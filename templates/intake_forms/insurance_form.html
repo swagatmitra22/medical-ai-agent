@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Information Form - MediCare Allergy & Wellness Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .form-header {
+            background: linear-gradient(135deg, #3498DB, #2980B9);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .form-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .form-body {
+            padding: 30px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3498DB;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: "";
+            width: 4px;
+            height: 25px;
+            background: #3498DB;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        .form-group.full-width {
+            flex: 100%;
+        }
+        
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+            color: #555;
+        }
+        
+        .required {
+            color: #e74c3c;
+        }
+        
+        input[type="text"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3498DB;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        
+        .insurance-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .card-title {
+            font-weight: bold;
+            color: #3498DB;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #3498DB;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #3498DB, #2980B9);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="form-header">
+            <h1>💳 Insurance Information Form</h1>
+            <p>MediCare Allergy & Wellness Center</p>
+            <p>Complete insurance and billing information</p>
+        </div>
+        
+        <form class="form-body" id="insuranceForm">
+            <!-- Patient Information -->
+            <div class="form-section">
+                <h3 class="section-title">Patient Information</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientName">Patient Name <span class="required">*</span></label>
+                        <input type="text" id="patientName" name="patientName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dateOfBirth">Date of Birth <span class="required">*</span></label>
+                        <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientID">Patient ID/Account Number</label>
+                        <input type="text" id="patientID" name="patientID" placeholder="If known">
+                    </div>
+                    <div class="form-group">
+                        <label for="socialSecurity">Last 4 digits of SSN</label>
+                        <input type="text" id="socialSecurity" name="socialSecurity" maxlength="4" pattern="[0-9]{4}" placeholder="####">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Primary Insurance -->
+            <div class="form-section">
+                <h3 class="section-title">Primary Insurance</h3>
+                
+                <div class="insurance-card">
+                    <div class="card-title">Primary Insurance Information</div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="primaryInsuranceCompany">Insurance Company Name <span class="required">*</span></label>
+                            <input type="text" id="primaryInsuranceCompany" name="primaryInsuranceCompany" placeholder="e.g., BlueCross BlueShield" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="primaryPolicyNumber">Policy/Member ID Number <span class="required">*</span></label>
+                            <input type="text" id="primaryPolicyNumber" name="primaryPolicyNumber" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="primaryGroupNumber">Group Number</label>
+                            <input type="text" id="primaryGroupNumber" name="primaryGroupNumber">
+                        </div>
+                        <div class="form-group">
+                            <label for="primaryPlanName">Plan Name</label>
+                            <input type="text" id="primaryPlanName" name="primaryPlanName" placeholder="e.g., PPO, HMO, EPO">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="primaryEffectiveDate">Effective Date</label>
+                            <input type="date" id="primaryEffectiveDate" name="primaryEffectiveDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="primaryDeductible">Annual Deductible</label>
+                            <input type="text" id="primaryDeductible" name="primaryDeductible" placeholder="$0">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="primaryCopay">Office Visit Copay</label>
+                            <input type="text" id="primaryCopay" name="primaryCopay" placeholder="$0">
+                        </div>
+                        <div class="form-group">
+                            <label for="primarySpecialistCopay">Specialist Copay</label>
+                            <input type="text" id="primarySpecialistCopay" name="primarySpecialistCopay" placeholder="$0">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Primary Insurance Holder Information -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="primaryHolderName">Primary Insurance Holder Name</label>
+                        <input type="text" id="primaryHolderName" name="primaryHolderName">
+                    </div>
+                    <div class="form-group">
+                        <label for="primaryHolderDOB">Insurance Holder Date of Birth</label>
+                        <input type="date" id="primaryHolderDOB" name="primaryHolderDOB">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="relationshipToPrimary">Relationship to Patient</label>
+                        <select id="relationshipToPrimary" name="relationshipToPrimary">
+                            <option value="">Select relationship</option>
+                            <option value="self">Self</option>
+                            <option value="spouse">Spouse</option>
+                            <option value="child">Child</option>
+                            <option value="parent">Parent</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="primaryEmployer">Insurance Holder's Employer</label>
+                        <input type="text" id="primaryEmployer" name="primaryEmployer">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Secondary Insurance -->
+            <div class="form-section">
+                <h3 class="section-title">Secondary Insurance (if applicable)</h3>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="hasSecondaryInsurance" name="hasSecondaryInsurance" value="yes">
+                    <label for="hasSecondaryInsurance">I have secondary insurance coverage</label>
+                </div>
+                
+                <div id="secondaryInsuranceSection" style="display: none;">
+                    <div class="insurance-card">
+                        <div class="card-title">Secondary Insurance Information</div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="secondaryInsuranceCompany">Insurance Company Name</label>
+                                <input type="text" id="secondaryInsuranceCompany" name="secondaryInsuranceCompany">
+                            </div>
+                            <div class="form-group">
+                                <label for="secondaryPolicyNumber">Policy/Member ID Number</label>
+                                <input type="text" id="secondaryPolicyNumber" name="secondaryPolicyNumber">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="secondaryGroupNumber">Group Number</label>
+                                <input type="text" id="secondaryGroupNumber" name="secondaryGroupNumber">
+                            </div>
+                            <div class="form-group">
+                                <label for="secondaryHolderName">Insurance Holder Name</label>
+                                <input type="text" id="secondaryHolderName" name="secondaryHolderName">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="relationshipToSecondary">Relationship to Patient</label>
+                                <select id="relationshipToSecondary" name="relationshipToSecondary">
+                                    <option value="">Select relationship</option>
+                                    <option value="self">Self</option>
+                                    <option value="spouse">Spouse</option>
+                                    <option value="child">Child</option>
+                                    <option value="parent">Parent</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="secondaryEmployer">Insurance Holder's Employer</label>
+                                <input type="text" id="secondaryEmployer" name="secondaryEmployer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Billing Information -->
+            <div class="form-section">
+                <h3 class="section-title">Billing Information</h3>
+                
+                <div class="form-group">
+                    <label for="responsibleParty">Who is financially responsible for this account?</label>
+                    <select id="responsibleParty" name="responsibleParty">
+                        <option value="">Select responsible party</option>
+                        <option value="patient">Patient</option>
+                        <option value="insurance-holder">Insurance holder</option>
+                        <option value="parent-guardian">Parent/Guardian</option>
+                        <option value="spouse">Spouse</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="billingAddress">Billing Address</label>
+                        <textarea id="billingAddress" name="billingAddress" rows="3" placeholder="Street Address, City, State, ZIP"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="billingPhone">Billing Contact Phone</label>
+                        <input type="text" id="billingPhone" name="billingPhone" placeholder="(555) 123-4567">
+                    </div>
+                </div>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="sameAsPatient" name="sameAsPatient" value="yes">
+                    <label for="sameAsPatient">Billing address is the same as patient address</label>
+                </div>
+            </div>
+            
+            <!-- Authorization and Assignment -->
+            <div class="form-section">
+                <h3 class="section-title">Authorization and Assignment</h3>
+                
+                <div class="info-box">
+                    <p><strong>Assignment of Benefits:</strong> I authorize payment of medical benefits to MediCare Allergy & Wellness Center for services rendered. I authorize the release of medical information necessary to process my insurance claims.</p>
+                </div>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="authorizePayment" name="authorizePayment" value="yes" required>
+                    <label for="authorizePayment">I authorize assignment of benefits and release of medical information <span class="required">*</span></label>
+                </div>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="financialResponsibility" name="financialResponsibility" value="yes" required>
+                    <label for="financialResponsibility">I understand that I am financially responsible for all charges not covered by insurance <span class="required">*</span></label>
+                </div>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="accurateInfo" name="accurateInfo" value="yes" required>
+                    <label for="accurateInfo">I certify that the insurance information provided is accurate and complete <span class="required">*</span></label>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientSignature">Patient/Guardian Signature <span class="required">*</span></label>
+                        <input type="text" id="patientSignature" name="patientSignature" placeholder="Type your full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signatureDate">Date <span class="required">*</span></label>
+                        <input type="date" id="signatureDate" name="signatureDate" required>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Additional Information -->
+            <div class="form-section">
+                <h3 class="section-title">Additional Information</h3>
+                
+                <div class="form-group full-width">
+                    <label for="specialCircumstances">Special circumstances or additional insurance information:</label>
+                    <textarea id="specialCircumstances" name="specialCircumstances" rows="3" placeholder="Worker's compensation, auto accident, medicare supplements, etc."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="preferredContact">Preferred method for billing communications:</label>
+                    <select id="preferredContact" name="preferredContact">
+                        <option value="">Select preference</option>
+                        <option value="mail">Mail</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Phone</option>
+                        <option value="patient-portal">Patient Portal</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" class="submit-btn">Submit Insurance Information</button>
+        </form>
+    </div>
+    
+    <script>
+        // Show/hide secondary insurance section
+        document.getElementById('hasSecondaryInsurance').addEventListener('change', function() {
+            const secondarySection = document.getElementById('secondaryInsuranceSection');
+            if (this.checked) {
+                secondarySection.style.display = 'block';
+            } else {
+                secondarySection.style.display = 'none';
+            }
+        });
+        
+        // Form submission
+        document.getElementById('insuranceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            alert('Thank you! Your insurance information has been submitted successfully.');
+            console.log('Insurance Form Data:', data);
+        });
+        
+        // Auto-set signature date to today
+        document.getElementById('signatureDate').valueAsDate = new Date();
+    </script>
+</body>
+</html>

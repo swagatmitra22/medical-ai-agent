@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Patient Intake Form - MediCare Allergy & Wellness Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .form-header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .form-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .form-header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .form-body {
+            padding: 30px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 25px;
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: "";
+            width: 4px;
+            height: 25px;
+            background: #4CAF50;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group.full-width {
+            flex: 100%;
+        }
+        
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .required {
+            color: #e74c3c;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        select,
+        textarea {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .radio-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .radio-item input[type="radio"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+        
+        .important-note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .important-note h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .submit-section {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 2px solid #e9ecef;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="form-header">
+            <h1>🏥 MediCare Allergy & Wellness Center</h1>
+            <p>456 Healthcare Boulevard, Suite 300 | Phone: (555) 123-4567</p>
+            <h2>New Patient Intake Form</h2>
+            <p>Please complete this form and submit 24 hours before your visit.</p>
+        </div>
+        
+        <form class="form-body" id="newPatientForm">
+            <!-- Patient Information Section -->
+            <div class="form-section">
+                <h3 class="section-title">Patient Information</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lastName">Last Name <span class="required">*</span></label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstName">First Name <span class="required">*</span></label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="middleInitial">Middle Initial</label>
+                        <input type="text" id="middleInitial" name="middleInitial" maxlength="1">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dateOfBirth">Date of Birth <span class="required">*</span></label>
+                        <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender <span class="required">*</span></label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="homePhone">Home Phone</label>
+                        <input type="tel" id="homePhone" name="homePhone" placeholder="(555) 123-4567">
+                    </div>
+                    <div class="form-group">
+                        <label for="cellPhone">Cell Phone <span class="required">*</span></label>
+                        <input type="tel" id="cellPhone" name="cellPhone" placeholder="(555) 123-4567" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="email">Email Address <span class="required">*</span></label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="streetAddress">Street Address <span class="required">*</span></label>
+                        <input type="text" id="streetAddress" name="streetAddress" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">City <span class="required">*</span></label>
+                        <input type="text" id="city" name="city" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State <span class="required">*</span></label>
+                        <input type="text" id="state" name="state" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="zipCode">ZIP Code <span class="required">*</span></label>
+                        <input type="text" id="zipCode" name="zipCode" pattern="[0-9]{5}" required>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Emergency Contact Section -->
+            <div class="form-section">
+                <h3 class="section-title">Emergency Contact</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emergencyName">Emergency Contact Name <span class="required">*</span></label>
+                        <input type="text" id="emergencyName" name="emergencyName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="relationship">Relationship <span class="required">*</span></label>
+                        <input type="text" id="relationship" name="relationship" placeholder="e.g., Spouse, Parent, Sibling" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emergencyPhone">Phone Number <span class="required">*</span></label>
+                        <input type="tel" id="emergencyPhone" name="emergencyPhone" placeholder="(555) 123-4567" required>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Insurance Information Section -->
+            <div class="form-section">
+                <h3 class="section-title">Insurance Information</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="primaryInsurance">Primary Insurance Company</label>
+                        <input type="text" id="primaryInsurance" name="primaryInsurance" placeholder="e.g., BlueCross BlueShield">
+                    </div>
+                    <div class="form-group">
+                        <label for="primaryMemberId">Member ID</label>
+                        <input type="text" id="primaryMemberId" name="primaryMemberId">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="primaryGroupNumber">Group Number</label>
+                        <input type="text" id="primaryGroupNumber" name="primaryGroupNumber">
+                    </div>
+                    <div class="form-group">
+                        <label for="secondaryInsurance">Secondary Insurance (if applicable)</label>
+                        <input type="text" id="secondaryInsurance" name="secondaryInsurance">
+                    </div>
+                </div>
+                
+                <p><strong>Note:</strong> Please bring insurance cards and photo ID to your appointment.</p>
+            </div>
+            
+            <!-- Chief Complaint & Symptoms Section -->
+            <div class="form-section">
+                <h3 class="section-title">Chief Complaint & Symptoms</h3>
+                
+                <div class="form-group full-width">
+                    <label for="primaryReason">What is the primary reason for your visit today? <span class="required">*</span></label>
+                    <textarea id="primaryReason" name="primaryReason" placeholder="Please describe your main concern or symptoms..." required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="symptomDuration">How long have you been experiencing these symptoms?</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="duration1" name="symptomDuration" value="less-than-1-week">
+                            <label for="duration1">Less than 1 week</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="duration2" name="symptomDuration" value="1-4-weeks">
+                            <label for="duration2">1-4 weeks</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="duration3" name="symptomDuration" value="1-6-months">
+                            <label for="duration3">1-6 months</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="duration4" name="symptomDuration" value="more-than-6-months">
+                            <label for="duration4">More than 6 months</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Please check all symptoms you are currently experiencing:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="sneezing" name="symptoms" value="sneezing">
+                            <label for="sneezing">Sneezing</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="runnyNose" name="symptoms" value="runny-nose">
+                            <label for="runnyNose">Runny nose</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="stuffyNose" name="symptoms" value="stuffy-nose">
+                            <label for="stuffyNose">Stuffy nose</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="itchyEyes" name="symptoms" value="itchy-eyes">
+                            <label for="itchyEyes">Itchy eyes</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="wateryEyes" name="symptoms" value="watery-eyes">
+                            <label for="wateryEyes">Watery eyes</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="skinRash" name="symptoms" value="skin-rash">
+                            <label for="skinRash">Skin rash/hives</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="wheezing" name="symptoms" value="wheezing">
+                            <label for="wheezing">Wheezing</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="shortBreath" name="symptoms" value="shortness-breath">
+                            <label for="shortBreath">Shortness of breath</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="coughing" name="symptoms" value="coughing">
+                            <label for="coughing">Coughing</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="chestTight" name="symptoms" value="chest-tightness">
+                            <label for="chestTight">Chest tightness</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="sinusPressure" name="symptoms" value="sinus-pressure">
+                            <label for="sinusPressure">Sinus pressure</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="headaches" name="symptoms" value="headaches">
+                            <label for="headaches">Headaches</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Allergy History Section -->
+            <div class="form-section">
+                <h3 class="section-title">Allergy History</h3>
+                
+                <div class="form-group">
+                    <label>Do you have any known allergies? <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="allergiesYes" name="knownAllergies" value="yes" required>
+                            <label for="allergiesYes">Yes</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="allergiesNo" name="knownAllergies" value="no" required>
+                            <label for="allergiesNo">No</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="allergiesUnsure" name="knownAllergies" value="not-sure" required>
+                            <label for="allergiesUnsure">Not sure</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="allergyList">If yes, please list all known allergies and reactions:</label>
+                    <textarea id="allergyList" name="allergyList" placeholder="Include foods, medications, environmental allergens, etc."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="allergyTesting">Have you ever had allergy testing before?</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="testingYes" name="allergyTesting" value="yes">
+                            <label for="testingYes">Yes</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="testingNo" name="allergyTesting" value="no">
+                            <label for="testingNo">No</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="epipen">Have you ever used an EpiPen or had a severe allergic reaction?</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="epipenYes" name="epipen" value="yes">
+                            <label for="epipenYes">Yes</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="epipenNo" name="epipen" value="no">
+                            <label for="epipenNo">No</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Current Medications Section -->
+            <div class="form-section">
+                <h3 class="section-title">Current Medications</h3>
+                
+                <div class="form-group full-width">
+                    <label for="currentMedications">Please list ALL current medications, vitamins, and supplements:</label>
+                    <textarea id="currentMedications" name="currentMedications" placeholder="Include prescription medications, over-the-counter drugs, vitamins, and herbal supplements. Include dosage if known."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Are you currently taking any of these allergy medications?</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="claritin" name="allergyMeds" value="claritin">
+                            <label for="claritin">Claritin (loratadine)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="zyrtec" name="allergyMeds" value="zyrtec">
+                            <label for="zyrtec">Zyrtec (cetirizine)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="allegra" name="allergyMeds" value="allegra">
+                            <label for="allegra">Allegra (fexofenadine)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="benadryl" name="allergyMeds" value="benadryl">
+                            <label for="benadryl">Benadryl (diphenhydramine)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="nasalSprays" name="allergyMeds" value="nasal-sprays">
+                            <label for="nasalSprays">Flonase/Nasacort (nasal sprays)</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="otherAllergyMeds">Other allergy medications:</label>
+                    <input type="text" id="otherAllergyMeds" name="otherAllergyMeds" placeholder="Please specify">
+                </div>
+            </div>
+            
+            <!-- Medical History Section -->
+            <div class="form-section">
+                <h3 class="section-title">Medical History</h3>
+                
+                <div class="form-group">
+                    <label>Please check any conditions you have or have had:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asthma" name="medicalHistory" value="asthma">
+                            <label for="asthma">Asthma</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="eczema" name="medicalHistory" value="eczema">
+                            <label for="eczema">Eczema</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="sinusInfections" name="medicalHistory" value="sinus-infections">
+                            <label for="sinusInfections">Sinus infections</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="pneumonia" name="medicalHistory" value="pneumonia">
+                            <label for="pneumonia">Pneumonia</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="bronchitis" name="medicalHistory" value="bronchitis">
+                            <label for="bronchitis">Bronchitis</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="highBP" name="medicalHistory" value="high-blood-pressure">
+                            <label for="highBP">High blood pressure</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="heartDisease" name="medicalHistory" value="heart-disease">
+                            <label for="heartDisease">Heart disease</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diabetes" name="medicalHistory" value="diabetes">
+                            <label for="diabetes">Diabetes</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="otherConditions">Other conditions:</label>
+                    <input type="text" id="otherConditions" name="otherConditions" placeholder="Please specify">
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="familyHistory">Family history of allergies or asthma:</label>
+                    <textarea id="familyHistory" name="familyHistory" placeholder="Please describe any family history of allergies, asthma, or related conditions"></textarea>
+                </div>
+            </div>
+            
+            <!-- Important Pre-Visit Instructions -->
+            <div class="important-note">
+                <h4>🚨 IMPORTANT PRE-VISIT INSTRUCTIONS</h4>
+                <p><strong>CRITICAL:</strong> If allergy testing is planned, you <strong>MUST</strong> stop the following medications 7 days before your appointment:</p>
+                <ul>
+                    <li>All antihistamines (Claritin, Zyrtec, Allegra, Benadryl)</li>
+                    <li>Cold medications containing antihistamines</li>
+                    <li>Sleep aids like Tylenol PM</li>
+                </ul>
+                <p><strong>You MAY continue:</strong> Nasal sprays (Flonase, Nasacort), asthma inhalers, and prescription medications</p>
+                
+                <div class="form-group">
+                    <label>I understand the pre-visit medication instructions: <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="instructionsUnderstood" name="instructions" value="understood" required>
+                            <label for="instructionsUnderstood">Yes, I understand and will follow instructions</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="instructionsQuestions" name="instructions" value="questions" required>
+                            <label for="instructionsQuestions">I have questions about these instructions</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Patient Acknowledgment -->
+            <div class="form-section">
+                <h3 class="section-title">Patient Acknowledgment</h3>
+                
+                <p>I certify that the information provided is accurate and complete to the best of my knowledge. I understand that providing false information may affect my treatment and care.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patientSignature">Patient Signature <span class="required">*</span></label>
+                        <input type="text" id="patientSignature" name="patientSignature" placeholder="Type your full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signatureDate">Date <span class="required">*</span></label>
+                        <input type="date" id="signatureDate" name="signatureDate" required>
+                    </div>
+                </div>
+            </div>
+        </form>
+        
+        <div class="submit-section">
+            <button type="submit" class="submit-btn" form="newPatientForm">Submit Intake Form</button>
+            <p style="margin-top: 20px; color: #666;">
+                <strong>MediCare Allergy & Wellness Center</strong><br>
+                456 Healthcare Boulevard, Suite 300 | (555) 123-4567<br>
+                Please submit this form 24 hours before your appointment or arrive 15 minutes early if completing at the office.
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Form validation and submission
+        document.getElementById('newPatientForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Basic validation
+            const requiredFields = ['firstName', 'lastName', 'dateOfBirth', 'gender', 'cellPhone', 'email', 'streetAddress', 'city', 'state', 'zipCode', 'emergencyName', 'relationship', 'emergencyPhone', 'primaryReason', 'knownAllergies', 'instructions', 'patientSignature', 'signatureDate'];
+            
+            let isValid = true;
+            for (let field of requiredFields) {
+                if (!data[field]) {
+                    isValid = false;
+                    break;
+                }
+            }
+            
+            if (isValid) {
+                alert('Thank you! Your intake form has been submitted successfully. You will receive a confirmation email shortly.');
+                console.log('Form Data:', data);
+                // Here you would typically send the data to your server
+            } else {
+                alert('Please fill in all required fields before submitting.');
+            }
+        });
+        
+        // Auto-set signature date to today
+        document.getElementById('signatureDate').valueAsDate = new Date();
+    </script>
+</body>
+</html>
