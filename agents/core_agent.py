@@ -83,7 +83,7 @@ class MedicalSchedulingAgent:
     using Google's Gemini API.
     """
     
-    def __init__(self, gemini_model="gemini-2.0-flash", temperature=0.3, enable_persistence=True):
+    def __init__(self, gemini_model="gemini-2.0-flash", temperature=0.3, enable_persistence=False):
         """
         Initialize the Medical Scheduling Agent with Gemini API.
         
