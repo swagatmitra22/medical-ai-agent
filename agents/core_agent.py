@@ -83,15 +83,16 @@ class MedicalSchedulingAgent:
     using Google's Gemini API.
     """
     
-    def __init__(self, gemini_model="gemini-pro", temperature=0.3, enable_persistence=True):
+    def __init__(self, gemini_model="gemini-2.0-flash", temperature=0.3, enable_persistence=True):
         """
         Initialize the Medical Scheduling Agent with Gemini API.
         
         Args:
-            gemini_model: The Gemini model to use (gemini-pro, gemini-pro-vision)
+            gemini_model: The Gemini model to use (gemini-2.0-flash, gemini-pro, etc.)
             temperature: Model creativity level (0.0-1.0)
             enable_persistence: Whether to enable conversation memory
         """
+
         # Initialize Gemini LLM
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
@@ -790,7 +791,7 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
 # ============================================================================
 
 def create_gemini_agent(
-    model_name: str = "gemini-pro", 
+    model_name: str = "gemini-2.0-flash",
     temperature: float = 0.3,
     api_key: str = None
 ) -> MedicalSchedulingAgent:
@@ -798,13 +799,14 @@ def create_gemini_agent(
     Create an agent instance using Google's Gemini API.
     
     Args:
-        model_name: Gemini model to use (gemini-pro, gemini-pro-vision)
+        model_name: Gemini model to use (gemini-2.0-flash, gemini-pro, etc.)
         temperature: Model creativity level (0.0 to 1.0)
         api_key: Google API key (if not in environment)
         
     Returns:
         Configured MedicalSchedulingAgent instance
     """
+
     if api_key:
         os.environ["GOOGLE_API_KEY"] = api_key
     
@@ -823,7 +825,7 @@ if __name__ == "__main__":
     
     try:
         # Create agent with Gemini
-        agent = create_gemini_agent(model_name="gemini-pro", temperature=0.3)
+        agent = create_gemini_agent(model_name="gemini-2.0-flash", temperature=0.3)
         
         print("\n=== Testing Agent Functionality with Gemini ===")
         
