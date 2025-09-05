@@ -83,7 +83,7 @@ class MedicalSchedulingAgent:
     using Google's Gemini API.
     """
     
-    def __init__(self, gemini_model="gemini-2.0-flash", temperature=0.3, enable_persistence=False):
+    def __init__(self, gemini_model="gemini-2.0-flash", temperature=0.3, enable_persistence=True):
         """
         Initialize the Medical Scheduling Agent with Gemini API.
         
@@ -109,7 +109,7 @@ class MedicalSchedulingAgent:
         
         # Initialize memory/checkpointing for conversation state
         if enable_persistence:
-            self.memory = SqliteSaver.from_conn_string(":memory:")
+            self.memory = MemorySaver()
         else:
             self.memory = None
             
