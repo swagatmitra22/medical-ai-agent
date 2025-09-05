@@ -67,6 +67,7 @@ st.markdown("""
         border-radius: 15px 15px 5px 15px;
         margin: 5px 0;
         margin-left: 20%;
+        color: black;
         text-align: right;
     }
     
@@ -77,6 +78,7 @@ st.markdown("""
         margin: 5px 0;
         margin-right: 20%;
         border-left: 4px solid #4CAF50;
+        color: black;
     }
     
     .metric-card {
@@ -85,6 +87,7 @@ st.markdown("""
         border-radius: 8px;
         border: 1px solid #E0E0E0;
         margin: 0.5rem 0;
+        color: black;
     }
     
     .status-success {
@@ -103,6 +106,7 @@ st.markdown("""
         border-radius: 8px;
         border-left: 4px solid #4CAF50;
         margin: 1rem 0;
+        color: black;
     }
 </style>
 """, unsafe_allow_html=True)
