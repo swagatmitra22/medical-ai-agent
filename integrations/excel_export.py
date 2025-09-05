@@ -65,58 +65,65 @@ class AppointmentExporter:
             os.makedirs(self.export_directory)
             logger.info(f"Created export directory: {self.export_directory}")
     
-    def export_appointment_data(self, 
-                              appointments_df: pd.DataFrame, 
-                              filename: Optional[str] = None) -> str:
-        """
-        Export appointment data to Excel with multiple sheets and formatting.
+    def export_appointment_data(state: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate administrative report from appointment state."""
+        logger.info("Generating administrative report")
         
-        Args:
-            appointments_df: DataFrame containing appointment data
-            filename: Optional custom filename for the export
-            
-        Returns:
-            Path to the exported Excel file
-        """
         try:
-            # Generate filename if not provided
-            if not filename:
+            confirmation_details = state.get('confirmation_details', {})
+            
+            if not confirmation_details:
+                return {
+                    **state,
+                    "error_message": "No confirmation details available for report generation",
+                    "export_status": "failed"
+                }
+            
+            # Create appointment data with proper structure
+            appointment_data = {
+                'Confirmation_ID': confirmation_details.get('confirmation_id', ''),
+                'Patient_Name': confirmation_details.get('patient_name', ''),
+                'Patient_Type': confirmation_details.get('patient_type', ''),
+                'Phone': confirmation_details.get('patient_phone', ''),
+                'Email': confirmation_details.get('patient_email', ''),
+                'Appointment_Date': confirmation_details.get('appointment_date', ''),
+                'Appointment_Time': confirmation_details.get('appointment_time', ''),
+                'Duration_Minutes': confirmation_details.get('appointment_duration', 0),
+                'Doctor': confirmation_details.get('doctor_name', ''),
+                'Specialty': confirmation_details.get('doctor_specialty', ''),
+                'Insurance_Carrier': confirmation_details.get('insurance_carrier', ''),
+                'Member_ID': confirmation_details.get('member_id', ''),
+                'Estimated_Revenue': confirmation_details.get('estimated_revenue', 0),
+                'Booking_Status': confirmation_details.get('booking_status', ''),
+                'Confirmation_Time': confirmation_details.get('confirmation_timestamp', ''),
+                'Forms_Required': 'Yes' if confirmation_details.get('requires_forms') else 'No'
+            }
+            
+            # Export as single record
+            try:
+                df = pd.DataFrame([appointment_data])  # Wrap in list for single record
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"admin_appointment_report_{timestamp}.xlsx"
-            
-            filepath = os.path.join(self.export_directory, filename)
-            
-            # Create Excel writer with xlsxwriter engine for formatting
-            with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
-                # Write main appointments data
-                appointments_df.to_excel(writer, sheet_name='Appointments', index=False)
+                export_path = f"data/admin_appointment_report_{timestamp}.xlsx"
+                df.to_excel(export_path, index=False, engine='openpyxl')
                 
-                # Generate and write summary statistics
-                summary_df = self._generate_summary_statistics(appointments_df)
-                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                return {
+                    **state,
+                    "admin_export_path": export_path,
+                    "export_status": "success"
+                }
+            except Exception as export_error:
+                logger.warning(f"Excel export failed, continuing without it: {export_error}")
+                return {
+                    **state,
+                    "export_status": "skipped"
+                }
                 
-                # Generate and write daily schedule
-                daily_schedule_df = self._generate_daily_schedule(appointments_df)
-                daily_schedule_df.to_excel(writer, sheet_name='Daily_Schedule', index=False)
-                
-                # Generate and write doctor statistics
-                doctor_stats_df = self._generate_doctor_statistics(appointments_df)
-                doctor_stats_df.to_excel(writer, sheet_name='Doctor_Statistics', index=False)
-                
-                # Generate and write revenue analysis
-                revenue_df = self._generate_revenue_analysis(appointments_df)
-                revenue_df.to_excel(writer, sheet_name='Revenue_Analysis', index=False)
-                
-                # Apply formatting to all sheets
-                self._format_excel_workbook(writer, appointments_df, summary_df, 
-                                          daily_schedule_df, doctor_stats_df, revenue_df)
-            
-            logger.info(f"Appointment data exported successfully to {filepath}")
-            return filepath
-            
         except Exception as e:
-            logger.error(f"Error exporting appointment data: {str(e)}")
-            raise
+            logger.error(f"Error generating admin report: {str(e)}")
+            return {
+                **state,
+                "export_status": "failed"
+            }
     
     def _generate_summary_statistics(self, appointments_df: pd.DataFrame) -> pd.DataFrame:
         """Generate comprehensive summary statistics."""
@@ -382,19 +389,10 @@ def export_appointment_data(appointments_data: List[Dict[str, Any]],
         return ""
 
 def generate_admin_report(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generate administrative report from appointment state.
-    
-    Args:
-        state: Current appointment state with confirmation details
-        
-    Returns:
-        Updated state with export information
-    """
+    """Generate administrative report from appointment state."""
     logger.info("Generating administrative report")
     
     try:
-        # Extract confirmation details from state
         confirmation_details = state.get('confirmation_details', {})
         
         if not confirmation_details:
@@ -404,43 +402,44 @@ def generate_admin_report(state: Dict[str, Any]) -> Dict[str, Any]:
                 "export_status": "failed"
             }
         
-        # Create appointment data for export
-        appointment_data = [{
-            'Confirmation_ID': confirmation_details.get('confirmation_id', ''),
-            'Patient_Name': confirmation_details.get('patient_name', ''),
-            'Patient_Type': confirmation_details.get('patient_type', ''),
-            'Phone': confirmation_details.get('patient_phone', ''),
-            'Email': confirmation_details.get('patient_email', ''),
-            'Appointment_Date': confirmation_details.get('appointment_date', ''),
-            'Appointment_Time': confirmation_details.get('appointment_time', ''),
-            'Duration_Minutes': confirmation_details.get('appointment_duration', ''),
-            'Doctor': confirmation_details.get('doctor_name', ''),
-            'Specialty': confirmation_details.get('doctor_specialty', ''),
-            'Insurance_Carrier': confirmation_details.get('insurance_carrier', ''),
-            'Member_ID': confirmation_details.get('member_id', ''),
-            'Estimated_Revenue': confirmation_details.get('estimated_revenue', 0),
-            'Booking_Status': confirmation_details.get('booking_status', ''),
-            'Confirmation_Time': confirmation_details.get('confirmation_timestamp', ''),
+        # Create appointment data with consistent structure
+        appointment_data = {
+            'Confirmation_ID': str(confirmation_details.get('confirmation_id', '')),
+            'Patient_Name': str(confirmation_details.get('patient_name', '')),
+            'Patient_Type': str(confirmation_details.get('patient_type', '')),
+            'Phone': str(confirmation_details.get('patient_phone', '')),
+            'Email': str(confirmation_details.get('patient_email', '')),
+            'Appointment_Date': str(confirmation_details.get('appointment_date', '')),
+            'Appointment_Time': str(confirmation_details.get('appointment_time', '')),
+            'Duration_Minutes': int(confirmation_details.get('appointment_duration', 0)),
+            'Doctor': str(confirmation_details.get('doctor_name', '')),
+            'Specialty': str(confirmation_details.get('doctor_specialty', '')),
+            'Insurance_Carrier': str(confirmation_details.get('insurance_carrier', '')),
+            'Member_ID': str(confirmation_details.get('member_id', '')),
+            'Estimated_Revenue': float(confirmation_details.get('estimated_revenue', 0.0)),
+            'Booking_Status': str(confirmation_details.get('booking_status', '')),
+            'Confirmation_Time': str(confirmation_details.get('confirmation_timestamp', '')),
             'Forms_Required': 'Yes' if confirmation_details.get('requires_forms') else 'No'
-        }]
+        }
         
-        # Export the data
-        export_path = export_appointment_data(appointment_data)
+        # Convert to DataFrame properly
+        df = pd.DataFrame([appointment_data])
         
-        if export_path:
-            updated_state = {
-                **state,
-                "admin_export_path": export_path,
-                "export_status": "success"
-            }
-        else:
-            updated_state = {
-                **state,
-                "error_message": "Failed to generate admin report",
-                "export_status": "failed"
-            }
+        # Export with explicit engine
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"admin_appointment_report_{timestamp}.xlsx"
+        filepath = os.path.join("data", filename)
         
-        return updated_state
+        with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Appointments', index=False)
+        
+        logger.info(f"Admin report exported to {filepath}")
+        
+        return {
+            **state,
+            "admin_export_path": filepath,
+            "export_status": "success"
+        }
         
     except Exception as e:
         logger.error(f"Error generating admin report: {str(e)}")

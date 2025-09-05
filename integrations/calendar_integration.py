@@ -284,14 +284,24 @@ def _save_appointment_to_excel(appointment_record: Dict[str, Any]):
     try:
         excel_file = "data/appointments.xlsx"
         
-        # Try to load existing file with explicit engine
+        # Ensure all values are properly typed
+        clean_record = {}
+        for key, value in appointment_record.items():
+            if isinstance(value, (list, dict)):
+                clean_record[key] = str(value)
+            else:
+                clean_record[key] = value
+        
+        # Try to load existing file
         try:
             df = pd.read_excel(excel_file, engine='openpyxl')
         except FileNotFoundError:
             df = pd.DataFrame()
+        except Exception:
+            df = pd.DataFrame()
         
         # Add new appointment record
-        new_row = pd.DataFrame([appointment_record])
+        new_row = pd.DataFrame([clean_record])
         df = pd.concat([df, new_row], ignore_index=True)
         
         # Save to Excel with explicit engine
@@ -301,6 +311,7 @@ def _save_appointment_to_excel(appointment_record: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Error saving appointment to Excel: {str(e)}")
         raise
+
 
 def get_available_time_slots(doctor_name: str, date: str, duration: int) -> List[Dict[str, Any]]:
     """

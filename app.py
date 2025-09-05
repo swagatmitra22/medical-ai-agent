@@ -183,13 +183,20 @@ def load_admin_data():
         if os.path.exists("data/patients.csv"):
             admin_data['patients'] = pd.read_csv("data/patients.csv")
         
-        # Load doctor schedules
+        # Load doctor schedules with explicit engine
         if os.path.exists("data/doctor_schedules.xlsx"):
-            admin_data['schedules'] = pd.read_excel("data/doctor_schedules.xlsx")
+            admin_data['schedules'] = pd.read_excel("data/doctor_schedules.xlsx", engine='openpyxl')
         
-        # Load appointments if exists
+        # Load appointments if exists with explicit engine
         if os.path.exists("data/admin_appointment_report.xlsx"):
-            admin_data['appointments'] = pd.read_excel("data/admin_appointment_report.xlsx", sheet_name="Appointments")
+            try:
+                admin_data['appointments'] = pd.read_excel(
+                    "data/admin_appointment_report.xlsx", 
+                    sheet_name="Appointments",
+                    engine='openpyxl'
+                )
+            except Exception as e:
+                logger.warning(f"Could not load appointments: {str(e)}")
         
         return admin_data
     
