@@ -209,14 +209,15 @@ class DoctorScheduleManager:
                 group_sorted = group.sort_values('start_time')
                 
                 # Convert time strings to datetime objects for calculation
-                for idx, row in group_sorted.iterrows():
+                for i in range(len(group_sorted)):
+                    row = group_sorted.iloc[i]
                     start_time = self._parse_time(row['start_time'])
                     end_time = self._parse_time(row['end_time'])
                     
                     if start_time and end_time:
                         # Calculate slot duration
                         slot_duration = (datetime.combine(datetime.today(), end_time) - 
-                                       datetime.combine(datetime.today(), start_time)).total_seconds() / 60
+                                        datetime.combine(datetime.today(), start_time)).total_seconds() / 60
                         
                         # Check if this slot or consecutive slots can accommodate the duration
                         if slot_duration >= duration_minutes:
@@ -233,7 +234,7 @@ class DoctorScheduleManager:
                             })
                         elif duration_minutes > 30:
                             # Check for consecutive slots for longer appointments
-                            consecutive_slot = self._find_consecutive_slot(group_sorted, idx, duration_minutes)
+                            consecutive_slot = self._find_consecutive_slot(group_sorted, i, duration_minutes) #<-- FIX IS HERE
                             if consecutive_slot:
                                 suitable_slots.append(consecutive_slot)
             

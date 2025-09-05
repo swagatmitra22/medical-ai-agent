@@ -10,6 +10,7 @@ langchain-community>=0.0.20
 # Google AI Integration  
 langchain-google-genai>=1.0.8
 google-generativeai>=0.8.0
+langchain-groq>=0.1.0
 
 # Data Processing (NumPy 1.x compatible)
 numpy>=1.24.0,<2.0.0
@@ -17,9 +18,9 @@ pandas>=2.1.0,<2.3.0
 openpyxl>=3.1.2
 xlsxwriter>=3.1.9
 
-# Visualization (NumPy 2.0 compatible versions)
-plotly>=5.17.0
-xarray>=2023.10.0
+# Visualization (PINNED FOR NUMPY 1.x COMPATIBILITY)
+plotly==5.18.0 
+xarray==2023.6.0
 
 # Utilities
 python-dotenv>=1.0.0

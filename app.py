@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Import core components
 try:
-    from agents.core_agent import create_gemini_agent, MedicalSchedulingAgent
+    from agents.core_agent import create_agent, MedicalSchedulingAgent
     from data.sample_data_generator import generate_all_sample_data
     from integrations.excel_export import export_appointment_data
     from dotenv import load_dotenv
@@ -117,9 +117,9 @@ def initialize_session_state():
     # Core agent initialization
     if 'agent' not in st.session_state:
         try:
-            st.session_state.agent = create_gemini_agent()
+            st.session_state.agent = create_agent()
             st.session_state.agent_status = "✅ Connected"
-            logger.info("Gemini agent initialized successfully")
+            logger.info("Groq agent initialized successfully")
         except Exception as e:
             st.session_state.agent = None
             st.session_state.agent_status = "❌ Connection Failed"

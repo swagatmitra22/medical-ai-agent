@@ -17,6 +17,7 @@ Key Responsibilities:
 Author: RagaAI Case Study Implementation
 Date: September 2025
 """
+import json
 
 import re
 import logging
@@ -285,45 +286,83 @@ class PatientInfoExtractor:
 
 def collect_patient_information_with_gemini(state: Dict[str, Any], llm) -> Dict[str, Any]:
     """
-    Main function for collecting patient information using Gemini AI assistance.
-    
-    Args:
-        state: Current appointment state
-        llm: Gemini LLM instance for intelligent processing
-        
-    Returns:
-        Updated state with collected patient information
+    Main function for collecting patient information using a structured JSON output
+    from the Gemini AI to ensure accuracy and prevent parsing errors.
     """
-    logger.info("Collecting patient information with Gemini assistance")
+    logger.info("Collecting patient information with structured Gemini assistance")
     
     try:
-        # Initialize extractor
-        extractor = PatientInfoExtractor()
-        
-        # Get conversation messages
+        # 1. Get current state and focus only on the latest user message
         messages = state.get("messages", [])
         current_patient_info = state.get("patient_info", {})
+        user_messages = [msg for msg in messages if isinstance(msg, HumanMessage)]
         
-        # Extract information from all messages
-        extracted_info = {}
-        for message in messages:
-            if isinstance(message, (HumanMessage, BaseMessage)) and hasattr(message, 'content'):
-                msg_info = extractor.extract_from_text(message.content)
-                extracted_info.update(msg_info)
+        if not user_messages:
+            return state
+            
+        latest_user_input = user_messages[-1].content
         
-        # Merge with existing information
+        # 2. Define the required fields and create a structured prompt for Gemini
+        required_fields = ["name", "dob", "phone"]
+        
+        prompt = f"""
+        You are an expert at extracting patient information from a conversation for a medical appointment system.
+        Your task is to analyze the user's latest message and extract the required information.
+        The required fields are: {required_fields}.
+
+        Here is the information we have already collected: {current_patient_info}
+        Here is the user's latest message: "{latest_user_input}"
+
+        Analyze the message and return a JSON object with two keys:
+        1. "extracted_info": A dictionary containing any NEW information you found for the fields: "name", "dob", "phone".
+        2. "missing_info": A list of the required fields that are STILL missing after analyzing this new message.
+
+        Example:
+        If we already have the name and the user provides their DOB, the output should be:
+        {{
+            "extracted_info": {{"dob": "01/15/1990"}},
+            "missing_info": ["phone"]
+        }}
+
+        IMPORTANT: Only extract the specific information. Do not include extra words from the user's message. Ensure dob is in MM/DD/YYYY format.
+
+        JSON Response:
+        """
+
+        # 3. Call Gemini and robustly parse the JSON response
+        response_str = llm.invoke(prompt).content
+        
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', response_str)
+        if json_match:
+            response_str = json_match.group(1)
+        
+        try:
+            parsed_response = json.loads(response_str)
+            extracted_info = parsed_response.get("extracted_info", {})
+            missing_info = parsed_response.get("missing_info", [])
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse JSON response from Gemini: {response_str}")
+            missing_info = _get_missing_required_info(current_patient_info)
+            extracted_info = {}
+
+        # 4. Update patient info and generate the next response
         updated_patient_info = {**current_patient_info, **extracted_info}
-        
-        # Check completeness
-        missing_info = _get_missing_required_info(updated_patient_info)
-        
-        # Generate appropriate response using Gemini
+
+        if 'dob' in updated_patient_info and updated_patient_info['dob']:
+            try:
+                dob_obj = datetime.strptime(str(updated_patient_info['dob']), '%m/%d/%Y')
+                updated_patient_info['dob'] = dob_obj.strftime('%m/%d/%Y')
+            except (ValueError, TypeError):
+                logger.warning(f"LLM returned an invalid date format for DOB: {updated_patient_info['dob']}")
+                if 'dob' in updated_patient_info: del updated_patient_info['dob']
+                missing_info = _get_missing_required_info(updated_patient_info)
+
         if missing_info:
-            response = _generate_info_request_with_gemini(updated_patient_info, missing_info, llm)
+            response_content = _generate_info_request_with_gemini(updated_patient_info, missing_info, llm)
         else:
-            response = _generate_info_confirmation_with_gemini(updated_patient_info, llm)
-        
-        # Update state
+            response_content = _generate_info_confirmation_with_gemini(updated_patient_info, llm)
+            
+        # 5. Update and return the state
         updated_state = {
             **state,
             "patient_info": updated_patient_info,
@@ -331,10 +370,10 @@ def collect_patient_information_with_gemini(state: Dict[str, Any], llm) -> Dict[
             "current_step": "patient_info_collection"
         }
         
-        if response:
-            updated_state["messages"] = state["messages"] + [AIMessage(content=response)]
+        if response_content:
+            updated_state["messages"] = state["messages"] + [AIMessage(content=response_content)]
         
-        logger.info(f"Patient information updated: {len(updated_patient_info)} fields")
+        logger.info(f"Patient information updated: {updated_patient_info}")
         return updated_state
         
     except Exception as e:

@@ -14,6 +14,7 @@ import logging
 from typing import TypedDict, Dict, Any, List, Annotated, Literal
 from datetime import datetime
 import operator
+import time
 
 # LangGraph and LangChain imports
 from langgraph.graph import StateGraph, START, END
@@ -25,6 +26,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 
 # Google Gemini imports
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -83,28 +85,27 @@ class MedicalSchedulingAgent:
     using Google's Gemini API.
     """
     
-    def __init__(self, gemini_model="gemini-2.0-flash", temperature=0.3, enable_persistence=True):
+    def __init__(self, model_name="llama-3.1-8b-instant", temperature=0.3, enable_persistence=True):
         """
-        Initialize the Medical Scheduling Agent with Gemini API.
-        
+        Initialize the Medical Scheduling Agent with Groq API.
         Args:
-            gemini_model: The Gemini model to use (gemini-2.0-flash, gemini-pro, etc.)
+            model_name: The Groq model to use (e.g., llama3-8b-8192)
             temperature: Model creativity level (0.0-1.0)
             enable_persistence: Whether to enable conversation memory
         """
 
-        # Initialize Gemini LLM
-        api_key = os.getenv("GOOGLE_API_KEY")
+        # Initialize Groq LLM
+        api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            raise ValueError("GOOGLE_API_KEY not found in environment variables. Please add it to your .env file.")
+            raise ValueError("GROQ_API_KEY not found in environment variables. Please add it to your .env file.")
         
-        self.llm = ChatGoogleGenerativeAI(
-            model=gemini_model,
+        # Use ChatGroq instead of ChatGoogleGenerativeAI
+        self.llm = ChatGroq(
+            model_name=model_name,
             temperature=temperature,
-            google_api_key=api_key,
-            convert_system_message_to_human=True  # Gemini works better with this setting
+            groq_api_key=api_key
         )
-        
+ 
         self.enable_persistence = enable_persistence
         
         # Initialize memory/checkpointing for conversation state
@@ -116,7 +117,7 @@ class MedicalSchedulingAgent:
         # Build the workflow graph
         self.graph = self._build_workflow_graph()
         
-        logger.info(f"Medical Scheduling Agent initialized with Gemini model: {gemini_model}")
+        logger.info(f"Medical Scheduling Agent initialized with Groq model: {model_name}")
     
     def _build_workflow_graph(self):
         """
@@ -223,7 +224,7 @@ class MedicalSchedulingAgent:
             checkpointer=self.memory if self.enable_persistence else None
         )
         
-        logger.info("Workflow graph compiled successfully with Gemini integration")
+        logger.info("Workflow graph compiled successfully with Groq integration")
         return compiled_graph
     
     # ============================================================================
@@ -285,15 +286,15 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
         return {**state, **updated_state}
     
     def _patient_greeting_node(self, state: AppointmentState) -> AppointmentState:
-        """Handle initial patient greeting and introduction using Gemini."""
-        logger.info("Processing patient greeting with Gemini")
-        
+        """Handle initial patient greeting and introduction using Groq."""
+        logger.info("Processing patient greeting with Groq")
+
         try:
             # Get the last user message
             user_messages = [msg for msg in state.get("messages", []) if isinstance(msg, HumanMessage)]
             latest_user_input = user_messages[-1].content if user_messages else ""
-            
-            # Create a greeting prompt for Gemini
+
+            # Create a greeting prompt for Groq
             greeting_prompt = f"""
             A patient has just contacted our medical appointment scheduling system. Their message is: "{latest_user_input}"
 
@@ -307,7 +308,7 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
             If they haven't provided their name yet, ask for it first.
             """
             
-            # Get response from Gemini
+            # Get response from groq
             response = self.llm.invoke([HumanMessage(content=greeting_prompt)])
             
             # Add the response to messages
@@ -328,8 +329,8 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
             }
     
     def _collect_patient_info_node(self, state: AppointmentState) -> AppointmentState:
-        """Collect and validate patient information using Gemini's NLP."""
-        logger.info("Collecting patient information with Gemini")
+        """Collect and validate patient information using groq's NLP."""
+        logger.info("Collecting patient information with groq")
         
         try:
             from agents.patient_info_collector import collect_patient_information_with_gemini
@@ -610,7 +611,8 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
     def _handle_error_node(self, state: AppointmentState) -> AppointmentState:
         """Handle errors using Gemini to create helpful error messages."""
         logger.warning(f"Handling error: {state.get('error_message', 'Unknown error')}")
-        
+        time.sleep(5)
+
         retry_count = state.get("retry_count", 0) + 1
         error_msg = state.get('error_message', 'An unexpected error occurred')
         
@@ -790,28 +792,27 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
 # FACTORY FUNCTIONS
 # ============================================================================
 
-def create_gemini_agent(
-    model_name: str = "gemini-2.0-flash",
+def create_agent(
+    model_name: str = "llama-3.1-8b-instant",
     temperature: float = 0.3,
     api_key: str = None
 ) -> MedicalSchedulingAgent:
     """
-    Create an agent instance using Google's Gemini API.
-    
+    Create an agent instance using the configured LLM API (now Groq).
     Args:
-        model_name: Gemini model to use (gemini-2.0-flash, gemini-pro, etc.)
+        model_name: The model to use (e.g., llama-3.1-8b-instant)
         temperature: Model creativity level (0.0 to 1.0)
-        api_key: Google API key (if not in environment)
+        api_key: Groq API key (if not in environment)
         
     Returns:
         Configured MedicalSchedulingAgent instance
     """
 
     if api_key:
-        os.environ["GOOGLE_API_KEY"] = api_key
+        os.environ["GROQ_API_KEY"] = api_key
     
     return MedicalSchedulingAgent(
-        gemini_model=model_name,
+        model_name=model_name,      # <-- THE FIX: Pass 'model_name' instead of 'gemini_model'
         temperature=temperature,
         enable_persistence=True
     )
