@@ -93,7 +93,6 @@ class MedicalSchedulingAgent:
             temperature: Model creativity level (0.0-1.0)
             enable_persistence: Whether to enable conversation memory
         """
-
         # Initialize Groq LLM
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
@@ -118,6 +117,18 @@ class MedicalSchedulingAgent:
         self.graph = self._build_workflow_graph()
         
         logger.info(f"Medical Scheduling Agent initialized with Groq model: {model_name}")
+    
+    def _route_initial_step(self, state: AppointmentState) -> Literal["patient_greeting", "collect_patient_info"]:
+        """
+        Routes the initial step to greeting for new conversations or directly to info
+        collection for ongoing ones.
+        """
+        # If there is more than one message (System message + first user message),
+        # it means the conversation is ongoing.
+        if len(state.get("messages", [])) > 1:
+            return "collect_patient_info"
+        else:
+            return "patient_greeting"
     
     def _build_workflow_graph(self):
         """
@@ -145,9 +156,21 @@ class MedicalSchedulingAgent:
         workflow.add_node("handle_error", self._handle_error_node)
         workflow.add_node("request_human_help", self._request_human_help_node)
         
-        # ===== DEFINE WORKFLOW EDGES =====
+        # ===== DEFINE WORKFLOW EDGES (Corrected Logic) =====
         workflow.add_edge(START, "initialize_session")
-        workflow.add_edge("initialize_session", "patient_greeting")
+        
+        # --- START FIX ---
+        # After initialization, decide whether to greet or collect info
+        workflow.add_conditional_edges(
+            "initialize_session",
+            self._route_initial_step,
+            {
+                "patient_greeting": "patient_greeting",
+                "collect_patient_info": "collect_patient_info"
+            }
+        )
+        # --- END FIX ---
+        
         workflow.add_edge("patient_greeting", "collect_patient_info")
         
         # Conditional routing after patient info collection
@@ -156,7 +179,7 @@ class MedicalSchedulingAgent:
             self._route_after_patient_info,
             {
                 "continue_to_lookup": "patient_lookup",
-                "need_more_info": "collect_patient_info",
+                "need_more_info": "collect_patient_info",  # This loop is now correct
                 "handle_error": "handle_error"
             }
         )
@@ -262,9 +285,7 @@ class MedicalSchedulingAgent:
         # Add system message if this is the first interaction
         if not state.get("messages"):
             system_msg = SystemMessage(
-                content="""You are a professional and empathetic medical appointment scheduling assistant for MediCare Allergy & Wellness Center. 
-
-Your primary goals:
+                content="""You are a professional and empathetic medical appointment scheduling assistant for MediCare Allergy & Wellness Center. Your primary goals:
 1. Help patients book appointments efficiently
 2. Collect all necessary information (name, DOB, doctor preference, insurance)
 3. Provide excellent customer service with a warm, professional tone
@@ -297,7 +318,7 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
             # Create a greeting prompt for Groq
             greeting_prompt = f"""
             A patient has just contacted our medical appointment scheduling system. Their message is: "{latest_user_input}"
-
+            
             Please respond as a professional medical receptionist with:
             1. A warm, welcoming greeting
             2. Confirmation that you'll help them schedule an appointment
@@ -378,15 +399,11 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
                 appointment_type = "New Patient Consultation"
                 message_content = f"Hello {patient_name}! As a new patient, I'll schedule a comprehensive 60-minute consultation for you."
             
-            # Use Gemini to create a personalized message
-            personalization_prompt = f"""
-            Create a brief, professional message for a {patient_type} patient named {patient_name} 
-            confirming their {appointment_duration}-minute {appointment_type}. 
-            Mention that you'll now look for available time slots.
-            Keep it warm and professional, under 50 words.
-            """
-            
-            response = self.llm.invoke([HumanMessage(content=personalization_prompt)])
+            # Use a simple f-string for a templated, deterministic response
+            if patient_type == "returning":
+                message_content = f"Welcome back, {patient_name}! I've noted you'll need a 30-minute follow-up visit. Let me find some available time slots for you."
+            else:
+                message_content = f"Thank you, {patient_name}! As a new patient, I'll schedule a 60-minute consultation for you. I will now look for available time slots."
             
             updated_state = {
                 **state,
@@ -394,8 +411,8 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
                 "appointment_type": appointment_type,
                 "current_step": "finding_slots"
             }
-            
-            updated_state["messages"] = state["messages"] + [AIMessage(content=response.content)]
+
+            updated_state["messages"] = state["messages"] + [AIMessage(content=message_content)]
             
             return updated_state
             
@@ -447,22 +464,13 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
                 doctor = slot.get("doctor_name", "")
                 slots_text += f"{i}. {date} at {time} with {doctor}\n"
             
-            slot_presentation_prompt = f"""
-            Present these available appointment slots to {patient_name} in a friendly, professional manner:
-
-            {slots_text}
-
-            Ask them to choose their preferred option by number, or ask if they'd like to see different times.
-            Keep it conversational and helpful.
-            """
-            
-            response = self.llm.invoke([HumanMessage(content=slot_presentation_prompt)])
+            response_content = f"""Great news, {patient_name}! I found some available appointments. Here are the top 5 options:\n\n{slots_text}\nPlease choose your preferred option by number (e.g., 1, 2, 3). If none of these work, let me know, and I can search for different times."""
             
             updated_state = {
                 **state,
                 "current_step": "confirming_slot"
             }
-            updated_state["messages"] = state["messages"] + [AIMessage(content=response.content)]
+            updated_state["messages"] = state["messages"] + [AIMessage(content=response_content)]
             
             return updated_state
             
@@ -586,20 +594,11 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
             result["confirmation_status"] = "confirmed"
             
             # Use Gemini to create final success message
-            success_prompt = f"""
-            Create a final confirmation message for a patient whose appointment has been successfully booked.
-            Include:
-            1. Confirmation that everything is complete
-            2. Mention they'll receive email confirmation and reminders
-            3. Thank them for choosing MediCare Allergy & Wellness Center
-            4. Remind them to complete intake forms when they receive them
-            Keep it professional, warm, and concise.
-            """
-            
-            final_response = self.llm.invoke([HumanMessage(content=success_prompt)])
-            result["messages"] = state["messages"] + [AIMessage(content=final_response.content)]
+            final_response_content = "Everything is confirmed! You will receive a detailed confirmation by email shortly, along with any necessary intake forms. Thank you for choosing MediCare Allergy & Wellness Center!"
+            result["messages"] = state["messages"] + [AIMessage(content=final_response_content)]
             
             return result
+        
         except Exception as e:
             logger.error(f"Error exporting data: {str(e)}")
             return {
@@ -668,7 +667,7 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
         }
     
     # ============================================================================
-    # CONDITIONAL ROUTING FUNCTIONS (same as before)
+    # CONDITIONAL ROUTING FUNCTIONS
     # ============================================================================
     
     def _route_after_patient_info(self, state: AppointmentState) -> Literal["continue_to_lookup", "need_more_info", "handle_error"]:
@@ -715,8 +714,13 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
             return "booking_failed"
     
     def _route_error_handling(self, state: AppointmentState) -> Literal["retry", "escalate", "end"]:
-        """Route error handling based on retry count and error type."""
         retry_count = state.get("retry_count", 0)
+        error_message = state.get("error_message", "")
+        
+        # Circuit breaker for Excel errors
+        if "Excel file format" in error_message:
+            logger.warning("Excel error detected, escalating to human")
+            return "escalate"
         
         if retry_count >= 3:
             return "escalate"
@@ -812,7 +816,7 @@ def create_agent(
         os.environ["GROQ_API_KEY"] = api_key
     
     return MedicalSchedulingAgent(
-        model_name=model_name,      # <-- THE FIX: Pass 'model_name' instead of 'gemini_model'
+        model_name=model_name,
         temperature=temperature,
         enable_persistence=True
     )
@@ -822,13 +826,13 @@ def create_agent(
 # ============================================================================
 
 if __name__ == "__main__":
-    print("Initializing Medical Scheduling Agent with Gemini...")
+    print("Initializing Medical Scheduling Agent with Groq...")
     
     try:
         # Create agent with Llama
         agent = create_agent(model_name="llama-3.1-8b-instant", temperature=0.3)
 
-        print("\n=== Testing Agent Functionality with Llama ===")
+        print("\n=== Testing Agent Functionality with Groq ===")
 
         test_cases = [
             "Hi, I'd like to book an appointment",
@@ -836,7 +840,7 @@ if __name__ == "__main__":
             "I prefer morning appointments if possible"
         ]
         
-        thread_id = "test-gemini-session-001"
+        thread_id = "test-groq-session-001"
         
         for i, test_input in enumerate(test_cases, 1):
             print(f"\n--- Test {i} ---")
@@ -846,8 +850,8 @@ if __name__ == "__main__":
             print(f"Agent: {result['response']}")
             print(f"Status: {result['status']}")
         
-        print("\n=== Gemini Agent Testing Complete ===")
+        print("\n=== Groq Agent Testing Complete ===")
         
     except Exception as e:
-        print(f"Error initializing Gemini agent: {str(e)}")
-        print("Please ensure GOOGLE_API_KEY is set in your .env file")
+        print(f"Error initializing Groq agent: {str(e)}")
+        print("Please ensure GROQ_API_KEY is set in your .env file")

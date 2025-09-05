@@ -18,7 +18,6 @@ Author: RagaAI Case Study Implementation
 Date: September 2025
 """
 import json
-
 import re
 import logging
 from typing import Dict, Any, List, Optional, Tuple
@@ -286,13 +285,12 @@ class PatientInfoExtractor:
 
 def collect_patient_information_with_gemini(state: Dict[str, Any], llm) -> Dict[str, Any]:
     """
-    Main function for collecting patient information using a structured JSON output
-    from the Gemini AI to ensure accuracy and prevent parsing errors.
+    Main function for collecting patient information with proper fallback extraction.
     """
     logger.info("Collecting patient information with structured Gemini assistance")
     
     try:
-        # 1. Get current state and focus only on the latest user message
+        # 1. Get current state and latest user message
         messages = state.get("messages", [])
         current_patient_info = state.get("patient_info", {})
         user_messages = [msg for msg in messages if isinstance(msg, HumanMessage)]
@@ -302,67 +300,75 @@ def collect_patient_information_with_gemini(state: Dict[str, Any], llm) -> Dict[
             
         latest_user_input = user_messages[-1].content
         
-        # 2. Define the required fields and create a structured prompt for Gemini
-        required_fields = ["name", "dob", "phone"]
+        # 2. Initialize variables
+        extracted_info = {}
+        missing_info = []
         
-        prompt = f"""
-        You are an expert at extracting patient information from a conversation for a medical appointment system.
-        Your task is to analyze the user's latest message and extract the required information.
-        The required fields are: {required_fields}.
-
-        Here is the information we have already collected: {current_patient_info}
-        Here is the user's latest message: "{latest_user_input}"
-
-        Analyze the message and return a JSON object with two keys:
-        1. "extracted_info": A dictionary containing any NEW information you found for the fields: "name", "dob", "phone".
-        2. "missing_info": A list of the required fields that are STILL missing after analyzing this new message.
-
-        Example:
-        If we already have the name and the user provides their DOB, the output should be:
-        {{
-            "extracted_info": {{"dob": "01/15/1990"}},
-            "missing_info": ["phone"]
-        }}
-
-        IMPORTANT: Only extract the specific information. Do not include extra words from the user's message. Ensure dob is in MM/DD/YYYY format.
-
-        JSON Response:
-        """
-
-        # 3. Call Gemini and robustly parse the JSON response
-        response_str = llm.invoke(prompt).content
-        
-        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', response_str)
-        if json_match:
-            response_str = json_match.group(1)
-        
+        # 3. Try LLM extraction first
         try:
-            parsed_response = json.loads(response_str)
-            extracted_info = parsed_response.get("extracted_info", {})
-            missing_info = parsed_response.get("missing_info", [])
-        except json.JSONDecodeError:
-            logger.error(f"Failed to parse JSON response from Gemini: {response_str}")
-            missing_info = _get_missing_required_info(current_patient_info)
-            extracted_info = {}
-
-        # 4. Update patient info and generate the next response
+            prompt = f"""
+            Extract patient information from: "{latest_user_input}"
+            
+            Return ONLY a JSON object with this format:
+            {{"extracted_info": {{"name": "Full Name", "dob": "MM/DD/YYYY", "phone": "(XXX) XXX-XXXX"}}, "missing_info": ["field1", "field2"]}}
+            
+            Extract ONLY what is clearly provided. For missing required fields (name, dob, phone), list them in missing_info.
+            
+            JSON Response:
+            """
+            
+            response_str = llm.invoke([HumanMessage(content=prompt)]).content
+            
+            # Extract JSON from response
+            json_match = re.search(r'\{.*"extracted_info".*\}', response_str, re.DOTALL)
+            if json_match:
+                parsed_response = json.loads(json_match.group(0))
+                extracted_info = parsed_response.get("extracted_info", {})
+                missing_info = parsed_response.get("missing_info", [])
+            else:
+                raise ValueError("No valid JSON found in LLM response")
+                
+        except Exception as llm_error:
+            logger.warning(f"LLM extraction failed: {llm_error}. Using fallback extraction.")
+            
+            # 4. Fallback: Use regex-based extraction
+            extractor = PatientInfoExtractor()
+            extracted_info = extractor.extract_from_text(latest_user_input)
+            
+        # 5. Update patient info
         updated_patient_info = {**current_patient_info, **extracted_info}
-
+        
+        # 6. Validate date format
         if 'dob' in updated_patient_info and updated_patient_info['dob']:
             try:
-                dob_obj = datetime.strptime(str(updated_patient_info['dob']), '%m/%d/%Y')
-                updated_patient_info['dob'] = dob_obj.strftime('%m/%d/%Y')
+                # Ensure proper date format
+                if '/' in str(updated_patient_info['dob']):
+                    dob_obj = datetime.strptime(str(updated_patient_info['dob']), '%m/%d/%Y')
+                    updated_patient_info['dob'] = dob_obj.strftime('%m/%d/%Y')
+                else:
+                    # Try other formats and convert
+                    for fmt in ['%m-%d-%Y', '%Y/%m/%d', '%Y-%m-%d']:
+                        try:
+                            dob_obj = datetime.strptime(str(updated_patient_info['dob']), fmt)
+                            updated_patient_info['dob'] = dob_obj.strftime('%m/%d/%Y')
+                            break
+                        except ValueError:
+                            continue
             except (ValueError, TypeError):
-                logger.warning(f"LLM returned an invalid date format for DOB: {updated_patient_info['dob']}")
-                if 'dob' in updated_patient_info: del updated_patient_info['dob']
-                missing_info = _get_missing_required_info(updated_patient_info)
-
+                logger.warning(f"Invalid date format: {updated_patient_info['dob']}")
+                if 'dob' in updated_patient_info:
+                    del updated_patient_info['dob']
+        
+        # 7. Determine missing required info
+        missing_info = _get_missing_required_info(updated_patient_info)
+        
+        # 8. Generate appropriate response
         if missing_info:
             response_content = _generate_info_request_with_gemini(updated_patient_info, missing_info, llm)
         else:
             response_content = _generate_info_confirmation_with_gemini(updated_patient_info, llm)
             
-        # 5. Update and return the state
+        # 9. Update and return the state
         updated_state = {
             **state,
             "patient_info": updated_patient_info,
@@ -456,16 +462,20 @@ def _generate_info_request_with_gemini(patient_info: Dict[str, Any], missing_inf
         
         missing_items = [missing_descriptions.get(item, item) for item in missing_info]
         
-        prompt = f"""
-        A patient is scheduling an appointment. I have some of their information but need more.
-        
-        Current information: {', '.join([f"{k}: {v}" for k, v in patient_info.items() if v])}
-        Missing information: {', '.join(missing_items)}
-        
-        Create a friendly, professional request for the missing information. 
-        Be conversational and make it clear why we need this information.
-        Keep it under 50 words and sound natural.
-        """
+        if name:
+            prompt = f"""
+            Create a brief, friendly request for: {', '.join(missing_items)}
+            
+            The patient's name is {name}. We already have some information but need more.
+            Be conversational and professional. Keep it under 50 words.
+            """
+        else:
+            prompt = f"""
+            Create a brief, friendly request for: {', '.join(missing_items)}
+            
+            This is for a medical appointment booking. Be conversational and professional. 
+            Keep it under 50 words.
+            """
         
         response = llm.invoke([HumanMessage(content=prompt)])
         return response.content
@@ -477,9 +487,11 @@ def _generate_info_request_with_gemini(patient_info: Dict[str, Any], missing_inf
         if "name" in missing_info:
             return "I'd be happy to help you schedule an appointment! Could you please tell me your full name?"
         elif "dob" in missing_info:
-            return f"Thank you, {name}! I'll also need your date of birth to look up your records. Please provide it in MM/DD/YYYY format."
+            return f"Thank you{', ' + name if name else ''}! I'll also need your date of birth in MM/DD/YYYY format."
+        elif "phone" in missing_info:
+            return f"Thanks{', ' + name if name else ''}! Could you provide your phone number as well?"
         else:
-            return "I need a few more details to complete your appointment booking. Could you provide the missing information?"
+            return "I need a few more details to complete your appointment booking."
 
 def _generate_info_confirmation_with_gemini(patient_info: Dict[str, Any], llm) -> str:
     """Generate confirmation message when all info is collected."""
@@ -487,13 +499,11 @@ def _generate_info_confirmation_with_gemini(patient_info: Dict[str, Any], llm) -
         name = patient_info.get("name", "Patient")
         
         prompt = f"""
-        Create a brief, professional confirmation message for a patient named {name} 
-        who has provided all their required information for appointment scheduling.
+        Create a brief confirmation message for a patient named {name} 
+        who has provided all required information for appointment scheduling.
         
         Confirm that we have their details and mention that we'll now search 
-        for their records in our system.
-        
-        Keep it warm, professional, and under 40 words.
+        for their records. Keep it warm, professional, and under 40 words.
         """
         
         response = llm.invoke([HumanMessage(content=prompt)])
@@ -501,7 +511,7 @@ def _generate_info_confirmation_with_gemini(patient_info: Dict[str, Any], llm) -
         
     except Exception as e:
         logger.error(f"Error generating confirmation with Gemini: {str(e)}")
-        return f"Thank you, {name}! I have all the information I need. Let me search for your records in our system."
+        return f"Perfect, {name}! I have all the information I need. Let me search for your records in our system."
 
 def format_patient_info_display(patient_info: Dict[str, Any]) -> str:
     """Format patient information for display or confirmation."""

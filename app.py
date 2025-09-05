@@ -286,14 +286,11 @@ if st.session_state.current_page == "Patient Chat":
             # Display conversation history
             if st.session_state.messages:
                 st.markdown("### Conversation History")
-                for i, msg in enumerate(st.session_state.messages):
-                    if hasattr(msg, 'content'):
-                        content = msg.content
-                    else:
-                        content = str(msg)
-                    
-                    is_user = (i % 2 == 0)  # Assuming alternating user/assistant messages
-                    st.markdown(format_message_display(content, is_user), unsafe_allow_html=True)
+                for msg in st.session_state.messages:
+                    # Determine who sent the message based on the 'role' key
+                    is_user = msg["role"] == "user"
+                    # Display the message content
+                    st.markdown(format_message_display(msg["content"], is_user), unsafe_allow_html=True)
             
             # Chat input
             st.markdown("---")
@@ -324,7 +321,12 @@ if st.session_state.current_page == "Patient Chat":
                         
                         if result['status'] == 'success':
                             # Add messages to display history
-                            st.session_state.messages.extend([user_input, result['response']])
+                            # --- START CHANGE ---
+                            # Add the user's message to the history as a dictionary
+                            st.session_state.messages.append({"role": "user", "content": user_input})
+                            # Add the assistant's response to the history as a dictionary
+                            st.session_state.messages.append({"role": "assistant", "content": result['response']})
+                            # --- END CHANGE ---
                             st.success("✅ Message processed successfully!")
                             st.rerun()
                         else:

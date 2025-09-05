@@ -281,24 +281,21 @@ def _create_excel_booking(patient_info: Dict[str, Any], selected_slot: Dict[str,
         return {"status": "error", "message": str(e)}
 
 def _save_appointment_to_excel(appointment_record: Dict[str, Any]):
-    """Save appointment record to Excel file."""
-    
     try:
         excel_file = "data/appointments.xlsx"
         
-        # Try to load existing file
+        # Try to load existing file with explicit engine
         try:
-            df = pd.read_excel(excel_file)
+            df = pd.read_excel(excel_file, engine='openpyxl')
         except FileNotFoundError:
-            # Create new DataFrame if file doesn't exist
             df = pd.DataFrame()
         
         # Add new appointment record
         new_row = pd.DataFrame([appointment_record])
         df = pd.concat([df, new_row], ignore_index=True)
         
-        # Save to Excel
-        df.to_excel(excel_file, index=False)
+        # Save to Excel with explicit engine
+        df.to_excel(excel_file, index=False, engine='openpyxl')
         logger.info(f"Appointment saved to {excel_file}")
         
     except Exception as e:
