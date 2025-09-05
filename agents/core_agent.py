@@ -825,11 +825,11 @@ if __name__ == "__main__":
     print("Initializing Medical Scheduling Agent with Gemini...")
     
     try:
-        # Create agent with Gemini
-        agent = create_gemini_agent(model_name="gemini-2.0-flash", temperature=0.3)
-        
-        print("\n=== Testing Agent Functionality with Gemini ===")
-        
+        # Create agent with Llama
+        agent = create_agent(model_name="llama-3.1-8b-instant", temperature=0.3)
+
+        print("\n=== Testing Agent Functionality with Llama ===")
+
         test_cases = [
             "Hi, I'd like to book an appointment",
             "My name is John Smith, DOB is 01/15/1985, and I'd like to see Dr. Johnson",
