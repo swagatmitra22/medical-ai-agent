@@ -411,7 +411,6 @@ Available doctors: Dr. Johnson (Family Medicine), Dr. Smith (Cardiology), Dr. Wi
                 "appointment_type": appointment_type,
                 "current_step": "finding_slots"
             }
-
             updated_state["messages"] = state["messages"] + [AIMessage(content=message_content)]
             
             return updated_state

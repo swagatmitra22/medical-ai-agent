@@ -8,6 +8,7 @@ This module handles intelligent appointment scheduling including:
 - Slot optimization and business logic implementation
 - Integration with Gemini API for natural language responses
 - Calendar conflict resolution and availability management
+- Enhanced conflict detection and resolution
 
 Key Responsibilities:
 - Read doctor schedules from Excel files
@@ -15,6 +16,8 @@ Key Responsibilities:
 - Find optimal appointment slots based on patient preferences
 - Handle slot selection and confirmation with Gemini AI
 - Manage calendar updates and booking confirmations
+- Detect and resolve appointment conflicts
+- Provide alternative scheduling options
 
 Author: RagaAI Case Study Implementation
 Date: September 2025
@@ -234,7 +237,7 @@ class DoctorScheduleManager:
                             })
                         elif duration_minutes > 30:
                             # Check for consecutive slots for longer appointments
-                            consecutive_slot = self._find_consecutive_slot(group_sorted, i, duration_minutes) #<-- FIX IS HERE
+                            consecutive_slot = self._find_consecutive_slot(group_sorted, i, duration_minutes)
                             if consecutive_slot:
                                 suitable_slots.append(consecutive_slot)
             
@@ -413,6 +416,342 @@ class DoctorScheduleManager:
         except Exception as e:
             logger.error(f"Error reserving slot: {str(e)}")
             return {'status': 'error', 'message': str(e)}
+
+# ============================================================================
+# CONFLICT DETECTION AND RESOLUTION FUNCTIONS
+# ============================================================================
+
+def check_appointment_conflicts(doctor_name: str, appointment_date: str, start_time: str, duration_minutes: int) -> Tuple[bool, str]:
+    """
+    Check if the requested appointment time conflicts with existing appointments.
+    
+    Args:
+        doctor_name: Name of the doctor (e.g., "Dr. Johnson")
+        appointment_date: Date in MM/DD/YYYY format
+        start_time: Start time in HH:MM format (24-hour)
+        duration_minutes: Appointment duration in minutes
+        
+    Returns:
+        Tuple of (is_available, message)
+    """
+    try:
+        # Load existing appointments
+        appointments_file = "data/appointments.xlsx"
+        if not os.path.exists(appointments_file):
+            logger.info(f"No existing appointments file found at {appointments_file}")
+            return True, "No existing appointments to conflict with"
+        
+        appointments_df = pd.read_excel(appointments_file, engine='openpyxl')
+        
+        if appointments_df.empty:
+            return True, "No existing appointments found"
+        
+        # Filter appointments for same doctor and date with confirmed status
+        existing_appointments = appointments_df[
+            (appointments_df['doctor'] == doctor_name) & 
+            (appointments_df['appointment_date'] == appointment_date) &
+            (appointments_df['status'].isin(['confirmed', 'booked', 'scheduled']))
+        ]
+        
+        if existing_appointments.empty:
+            return True, "No conflicts found for this doctor and date"
+        
+        # Convert requested time to datetime objects for comparison
+        try:
+            if ':' in start_time:
+                requested_start = datetime.strptime(start_time, "%H:%M")
+            else:
+                # Handle AM/PM format
+                requested_start = datetime.strptime(start_time, "%I:%M %p")
+                start_time = requested_start.strftime("%H:%M")  # Normalize to 24-hour
+        except ValueError:
+            logger.error(f"Invalid time format: {start_time}")
+            return False, "Invalid time format provided"
+            
+        requested_end = requested_start + timedelta(minutes=duration_minutes)
+        
+        # Check each existing appointment for conflicts
+        for _, existing_appt in existing_appointments.iterrows():
+            try:
+                existing_time_str = str(existing_appt['appointment_time'])
+                
+                # Handle different time formats
+                if 'AM' in existing_time_str or 'PM' in existing_time_str:
+                    existing_start = datetime.strptime(existing_time_str, "%I:%M %p")
+                else:
+                    existing_start = datetime.strptime(existing_time_str, "%H:%M")
+                
+                existing_duration = existing_appt.get('duration_minutes', 60)  # Default 60 min
+                existing_end = existing_start + timedelta(minutes=existing_duration)
+                
+                # Check for time overlap
+                if (requested_start < existing_end) and (requested_end > existing_start):
+                    conflict_patient = existing_appt.get('patient_name', 'Unknown Patient')
+                    conflict_time = existing_appt['appointment_time']
+                    return False, f"Conflict with existing appointment: {conflict_patient} at {conflict_time}"
+                    
+            except (ValueError, KeyError) as e:
+                logger.warning(f"Error processing existing appointment: {e}")
+                continue
+        
+        return True, "No conflicts found"
+        
+    except Exception as e:
+        logger.error(f"Error in conflict detection: {str(e)}")
+        return False, f"Error checking conflicts: {str(e)}"
+
+def get_alternative_time_slots(doctor_name: str, appointment_date: str, duration_minutes: int = 60) -> List[str]:
+    """
+    Find alternative available time slots when conflicts occur.
+    
+    Args:
+        doctor_name: Name of the doctor
+        appointment_date: Date in MM/DD/YYYY format
+        duration_minutes: Required appointment duration
+        
+    Returns:
+        List of available time slots
+    """
+    try:
+        schedule_file = "data/doctor_schedules.xlsx"
+        if not os.path.exists(schedule_file):
+            return []
+        
+        schedule_df = pd.read_excel(schedule_file, engine='openpyxl')
+        
+        # Filter available slots for the specific doctor and date
+        available_slots = schedule_df[
+            (schedule_df['doctor_name'] == doctor_name) &
+            (schedule_df['date'] == appointment_date) &
+            (schedule_df['availability_status'] == 'available')
+        ].sort_values('start_time')
+        
+        alternatives = []
+        
+        # For 60-minute appointments, find consecutive 30-minute slots
+        if duration_minutes == 60:
+            for i in range(len(available_slots) - 1):
+                current_slot = available_slots.iloc[i]
+                next_slot = available_slots.iloc[i + 1]
+                
+                # Check if slots are consecutive
+                current_end = current_slot['end_time']
+                next_start = next_slot['start_time']
+                
+                if current_end == next_start:
+                    # Check if this 60-minute block conflicts with existing appointments
+                    is_available, _ = check_appointment_conflicts(
+                        doctor_name, appointment_date, 
+                        current_slot['start_time'], duration_minutes
+                    )
+                    
+                    if is_available:
+                        time_slot = f"{current_slot['start_time']} - {next_slot['end_time']}"
+                        alternatives.append(time_slot)
+                        
+                        if len(alternatives) >= 3:  # Limit to top 3 alternatives
+                            break
+        else:
+            # For 30-minute appointments
+            for _, slot in available_slots.head(5).iterrows():
+                is_available, _ = check_appointment_conflicts(
+                    doctor_name, appointment_date, 
+                    slot['start_time'], duration_minutes
+                )
+                
+                if is_available:
+                    time_slot = f"{slot['start_time']} - {slot['end_time']}"
+                    alternatives.append(time_slot)
+        
+        return alternatives
+        
+    except Exception as e:
+        logger.error(f"Error finding alternative slots: {str(e)}")
+        return []
+
+def update_doctor_schedule_status(doctor_name: str, appointment_date: str, start_time: str, 
+                                duration_minutes: int, new_status: str = "booked") -> bool:
+    """
+    Update doctor schedule to reflect booked appointments.
+    
+    Args:
+        doctor_name: Name of the doctor
+        appointment_date: Date in MM/DD/YYYY format
+        start_time: Start time in HH:MM format
+        duration_minutes: Appointment duration
+        new_status: New status ('booked', 'available', 'blocked')
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        schedule_file = "data/doctor_schedules.xlsx"
+        
+        if not os.path.exists(schedule_file):
+            logger.error(f"Schedule file not found: {schedule_file}")
+            return False
+        
+        # Load doctor schedules
+        schedule_df = pd.read_excel(schedule_file, engine='openpyxl')
+        
+        # Convert start time to datetime for calculations
+        try:
+            if ':' in start_time and ('AM' in start_time or 'PM' in start_time):
+                start_dt = datetime.strptime(start_time, "%I:%M %p")
+            elif ':' in start_time:
+                start_dt = datetime.strptime(start_time, "%H:%M")
+            else:
+                logger.error(f"Invalid time format: {start_time}")
+                return False
+        except ValueError as e:
+            logger.error(f"Error parsing time {start_time}: {e}")
+            return False
+        
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+        
+        # Find all 30-minute slots that need to be updated
+        current_time = start_dt
+        slots_updated = 0
+        
+        while current_time < end_dt:
+            slot_start = current_time.strftime("%H:%M")
+            slot_end = (current_time + timedelta(minutes=30)).strftime("%H:%M")
+            
+            # Find matching slots in the schedule
+            mask = (
+                (schedule_df['doctor_name'] == doctor_name) & 
+                (schedule_df['date'] == appointment_date) &
+                (schedule_df['start_time'] == slot_start) &
+                (schedule_df['end_time'] == slot_end)
+            )
+            
+            if mask.any():
+                schedule_df.loc[mask, 'availability_status'] = new_status
+                if new_status == "booked":
+                    schedule_df.loc[mask, 'notes'] = 'Patient appointment'
+                elif new_status == "available":
+                    schedule_df.loc[mask, 'notes'] = ''
+                
+                slots_updated += 1
+            
+            current_time += timedelta(minutes=30)
+        
+        # Save updated schedule
+        schedule_df.to_excel(schedule_file, index=False, engine='openpyxl')
+        
+        logger.info(f"Updated schedule: {slots_updated} slots marked as {new_status} for {doctor_name} on {appointment_date}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error updating doctor schedule: {str(e)}")
+        return False
+
+def create_appointment_booking_with_conflict_check(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Enhanced appointment booking with comprehensive conflict detection.
+    Replaces the existing create_calendar_booking function.
+    """
+    logger.info("Creating appointment booking with conflict detection")
+    
+    try:
+        # Extract booking details from state
+        patient_info = state.get("patient_info", {})
+        selected_slot = state.get("selected_slot", {})
+        appointment_duration = state.get("appointment_duration", 60)
+        
+        if not selected_slot:
+            return {
+                **state,
+                "error_message": "No appointment slot selected",
+                "booking_status": "failed"
+            }
+        
+        doctor_name = selected_slot.get("doctor_name", "")
+        appointment_date = selected_slot.get("date", "")
+        appointment_time = selected_slot.get("start_time", "")
+        
+        # STEP 1: Check for appointment conflicts
+        is_available, conflict_message = check_appointment_conflicts(
+            doctor_name, appointment_date, appointment_time, appointment_duration
+        )
+        
+        if not is_available:
+            # Find alternative times
+            alternatives = get_alternative_time_slots(doctor_name, appointment_date, appointment_duration)
+            
+            return {
+                **state,
+                "error_message": f"Time slot unavailable: {conflict_message}",
+                "alternative_slots": alternatives,
+                "booking_status": "conflict_detected"
+            }
+        
+        # STEP 2: Create appointment record
+        appointment_id = f"APPT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        appointment_record = {
+            'appointment_id': appointment_id,
+            'patient_name': patient_info.get('name', ''),
+            'patient_phone': patient_info.get('phone', ''),
+            'patient_email': patient_info.get('email', ''),
+            'appointment_date': appointment_date,
+            'appointment_time': appointment_time,
+            'duration_minutes': appointment_duration,
+            'doctor': doctor_name,
+            'status': 'confirmed',
+            'created_at': datetime.now().isoformat(),
+            'booking_method': 'ai_system',
+            'patient_type': state.get('patient_type', 'new'),
+            'notes': f"Booked via AI scheduling system"
+        }
+        
+        # STEP 3: Save appointment to Excel
+        appointments_file = "data/appointments.xlsx"
+        
+        try:
+            if os.path.exists(appointments_file):
+                appointments_df = pd.read_excel(appointments_file, engine='openpyxl')
+            else:
+                appointments_df = pd.DataFrame()
+            
+            new_appointment_df = pd.DataFrame([appointment_record])
+            appointments_df = pd.concat([appointments_df, new_appointment_df], ignore_index=True)
+            appointments_df.to_excel(appointments_file, index=False, engine='openpyxl')
+            
+        except Exception as e:
+            logger.error(f"Error saving appointment: {e}")
+            return {
+                **state,
+                "error_message": f"Failed to save appointment: {str(e)}",
+                "booking_status": "save_failed"
+            }
+        
+        # STEP 4: Update doctor schedule
+        schedule_updated = update_doctor_schedule_status(
+            doctor_name, appointment_date, appointment_time, appointment_duration, "booked"
+        )
+        
+        if not schedule_updated:
+            logger.warning("Failed to update doctor schedule - appointment created but schedule not updated")
+        
+        # STEP 5: Return successful booking state
+        logger.info(f"Appointment successfully booked: {appointment_id}")
+        
+        return {
+            **state,
+            "calendar_booking_id": appointment_id,
+            "booking_status": "success",
+            "appointment_record": appointment_record,
+            "confirmation_status": "booking_confirmed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in appointment booking: {str(e)}")
+        return {
+            **state,
+            "error_message": f"Booking system error: {str(e)}",
+            "booking_status": "system_error"
+        }
 
 # ============================================================================
 # MAIN SCHEDULING FUNCTIONS FOR LANGGRAPH INTEGRATION
@@ -629,6 +968,35 @@ def confirm_slot_selection_with_gemini(state: Dict[str, Any], llm) -> Dict[str, 
             # Valid selection made
             selected_slot = available_slots[selected_slot_index]
             
+            # Check for conflicts before confirming
+            is_available, conflict_message = check_appointment_conflicts(
+                selected_slot['doctor_name'], 
+                selected_slot['date'],
+                selected_slot['start_time'], 
+                selected_slot['required_duration']
+            )
+            
+            if not is_available:
+                # Slot has become unavailable - offer alternatives
+                alternatives = get_alternative_time_slots(
+                    selected_slot['doctor_name'], 
+                    selected_slot['date'], 
+                    selected_slot['required_duration']
+                )
+                
+                conflict_response = f"""I apologize, but the selected time slot has become unavailable: {conflict_message}
+
+Here are some alternative times for the same day:
+{chr(10).join([f"• {alt}" for alt in alternatives[:3]])}
+
+Would you like to select one of these alternatives, or shall I look for appointments on different days?"""
+                
+                return {
+                    **state,
+                    "alternative_slots": alternatives,
+                    "messages": state["messages"] + [AIMessage(content=conflict_response)]
+                }
+            
             # Reserve the slot
             schedule_manager = DoctorScheduleManager()
             reservation = schedule_manager.reserve_slot(selected_slot, state.get("patient_info", {}))
@@ -696,6 +1064,14 @@ def confirm_slot_selection_with_gemini(state: Dict[str, Any], llm) -> Dict[str, 
             "messages": state["messages"] + [AIMessage(content="I'm having trouble processing your selection. Could you please tell me which appointment slot you'd prefer by number (1, 2, 3, etc.)?")]
         }
 
+# Update the calendar integration to use the new conflict-aware booking
+def create_appointment_booking(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Main appointment booking function - now with conflict detection.
+    This replaces the existing function in calendar_integration.py
+    """
+    return create_appointment_booking_with_conflict_check(state)
+
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
@@ -751,26 +1127,14 @@ def validate_slot_availability(slot: Dict[str, Any]) -> Tuple[bool, str]:
         Tuple of (is_available, status_message)
     """
     try:
-        # In a real system, this would check the current database status
-        # For this demo, we'll simulate availability checking
+        # Use the conflict detection function
+        return check_appointment_conflicts(
+            slot['doctor_name'],
+            slot['date'],
+            slot['start_time'],
+            slot['required_duration']
+        )
         
-        appointment_date = datetime.strptime(slot['date'], '%m/%d/%Y').date()
-        today = datetime.now().date()
-        
-        # Check if appointment is in the past
-        if appointment_date < today:
-            return False, "Selected appointment date has passed"
-        
-        # Check if appointment is too far in the future (more than 90 days)
-        if appointment_date > today + timedelta(days=90):
-            return False, "Appointment date is too far in the future"
-        
-        # Simulate random availability (95% chance of being available)
-        if random.random() < 0.95:
-            return True, "Slot is available"
-        else:
-            return False, "Slot was recently booked by another patient"
-            
     except Exception as e:
         logger.error(f"Error validating slot availability: {str(e)}")
         return False, f"Error checking availability: {str(e)}"
@@ -805,6 +1169,43 @@ def get_alternative_slots(original_slot: Dict[str, Any], schedule_manager: Docto
         logger.error(f"Error finding alternative slots: {str(e)}")
         return []
 
+def get_available_time_slots(doctor_name: str, date: str, duration: int) -> List[Dict[str, Any]]:
+    """
+    Get available time slots for a specific doctor and date.
+    This function reads from the doctor schedules Excel file.
+    """
+    
+    try:
+        # Load doctor schedules
+        schedule_file = os.getenv("DOCTOR_SCHEDULE_PATH", "data/doctor_schedules.xlsx")
+        df = pd.read_excel(schedule_file)
+        
+        # Filter by doctor and date
+        available_slots = df[
+            (df['doctor_name'] == doctor_name) & 
+            (df['date'] == date) & 
+            (df['availability_status'] == 'available')
+        ]
+        
+        # Convert to list of dictionaries
+        slots = []
+        for _, row in available_slots.iterrows():
+            slots.append({
+                "date": row['date'],
+                "start_time": row['start_time'],
+                "end_time": row['end_time'],
+                "doctor_name": row['doctor_name'],
+                "doctor_id": row['doctor_id'],
+                "specialty": row.get('specialty', ''),
+                "duration": duration
+            })
+        
+        return slots
+        
+    except Exception as e:
+        logger.error(f"Error getting available slots: {str(e)}")
+        return []
+
 # ============================================================================
 # TESTING FUNCTIONS
 # ============================================================================
@@ -812,8 +1213,8 @@ def get_alternative_slots(original_slot: Dict[str, Any], schedule_manager: Docto
 def test_scheduling_system():
     """Test function to validate scheduling system functionality."""
     
-    print("Testing Medical Appointment Scheduling System")
-    print("=" * 60)
+    print("Testing Medical Appointment Scheduling System with Conflict Detection")
+    print("=" * 70)
     
     # Initialize schedule manager
     schedule_manager = DoctorScheduleManager()
@@ -836,18 +1237,33 @@ def test_scheduling_system():
     for slot in new_patient_slots[:3]:
         print(f"  - {slot['date']} at {slot['start_time']} with {slot['doctor_name']}")
     
-    # Test 3: Find slots for returning patient (30 minutes)
-    print("\n3. Testing Returning Patient Slot Search (30 minutes):")
-    returning_patient_slots = schedule_manager.find_available_slots(
-        duration_minutes=30,
-        max_days_ahead=14
-    )
-    print(f"Found {len(returning_patient_slots)} available 30-minute slots")
-    for slot in returning_patient_slots[:3]:
-        print(f"  - {slot['date']} at {slot['start_time']} with {slot['doctor_name']}")
+    # Test 3: Test conflict detection
+    print("\n3. Testing Conflict Detection:")
+    if new_patient_slots:
+        test_slot = new_patient_slots[0]
+        is_available, message = check_appointment_conflicts(
+            test_slot['doctor_name'],
+            test_slot['date'],
+            test_slot['start_time'],
+            60
+        )
+        print(f"Conflict check result: {is_available} - {message}")
     
-    # Test 4: Test slot reservation
-    print("\n4. Testing Slot Reservation:")
+    # Test 4: Test alternative slot finding
+    print("\n4. Testing Alternative Slot Finding:")
+    if new_patient_slots:
+        test_slot = new_patient_slots[0]
+        alternatives = get_alternative_time_slots(
+            test_slot['doctor_name'],
+            test_slot['date'],
+            60
+        )
+        print(f"Found {len(alternatives)} alternative slots")
+        for alt in alternatives[:3]:
+            print(f"  - {alt}")
+    
+    # Test 5: Test enhanced booking system
+    print("\n5. Testing Enhanced Booking System:")
     if new_patient_slots:
         test_patient = {
             "name": "John Test Patient",
@@ -855,12 +1271,20 @@ def test_scheduling_system():
             "email": "john@test.com"
         }
         
-        reservation = schedule_manager.reserve_slot(new_patient_slots[0], test_patient)
-        print(f"Reservation Status: {reservation.get('status', 'Unknown')}")
-        print(f"Reservation ID: {reservation.get('reservation_id', 'N/A')}")
+        test_state = {
+            "patient_info": test_patient,
+            "selected_slot": new_patient_slots[0],
+            "appointment_duration": 60,
+            "patient_type": "new"
+        }
+        
+        result = create_appointment_booking_with_conflict_check(test_state)
+        print(f"Booking Status: {result.get('booking_status')}")
+        if result.get('calendar_booking_id'):
+            print(f"Booking ID: {result['calendar_booking_id']}")
     
-    print("\n" + "=" * 60)
-    print("Scheduling system test completed!")
+    print("\n" + "=" * 70)
+    print("Enhanced scheduling system test completed!")
 
 if __name__ == "__main__":
     # Run tests if script is executed directly
