@@ -167,6 +167,7 @@ def create_appointment_booking(state: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError("Cannot create booking, no slot has been selected.")
 
         if calendly.use_fallback:
+            logger.info("Demo mode: Using Excel-based appointment storage")
             result = _create_excel_booking(patient_info, selected_slot, appointment_duration)
         else:
             # Pass the selected_slot to the calendly booking function

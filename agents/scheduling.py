@@ -31,6 +31,7 @@ from datetime import datetime, timedelta, time
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
 import random
+from fuzzywuzzy import fuzz
 
 # Load environment variables
 load_dotenv()
